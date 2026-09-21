@@ -283,7 +283,7 @@ impl Default for AppState {
             tool: Tool::Password,
             theme: ThemeMode::Dark,
             motion: true,
-            accent: AccentChoice::Indigo,
+            accent: AccentChoice::Sage,
             corner: 8,
             base_size: 13.5,
             mono_ui: false,
@@ -488,7 +488,7 @@ impl AppState {
             .iter()
             .find(|a| a.label() == ws.accent)
             .copied()
-            .unwrap_or(AccentChoice::Indigo);
+            .unwrap_or(AccentChoice::Sage);
         self.base_size = ws.base_size.clamp(11.0, 17.0);
         self.mono_ui = ws.mono_ui;
         self.ui_scale = ws.ui_scale.clamp(0.8, 1.5);

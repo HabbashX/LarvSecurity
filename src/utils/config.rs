@@ -37,7 +37,7 @@ impl Default for WorkspaceData {
         Self {
             version: 1,
             theme: "Dark".into(),
-            accent: "Indigo".into(),
+            accent: "Sage".into(),
             base_size: 13.5,
             mono_ui: false,
             ui_scale: 1.0,

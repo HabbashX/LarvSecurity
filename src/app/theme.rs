@@ -30,6 +30,7 @@ impl ThemeMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AccentChoice {
     #[default]
+    Sage,
     Indigo,
     Cyan,
     Emerald,
@@ -41,6 +42,7 @@ pub enum AccentChoice {
 impl AccentChoice {
     pub fn label(self) -> &'static str {
         match self {
+            AccentChoice::Sage => "Sage",
             AccentChoice::Indigo => "Indigo",
             AccentChoice::Cyan => "Cyan",
             AccentChoice::Emerald => "Emerald",
@@ -51,6 +53,7 @@ impl AccentChoice {
     }
     pub fn all() -> &'static [AccentChoice] {
         &[
+            AccentChoice::Sage,
             AccentChoice::Indigo,
             AccentChoice::Cyan,
             AccentChoice::Emerald,
@@ -61,6 +64,7 @@ impl AccentChoice {
     }
     pub fn color(self) -> Color32 {
         match self {
+            AccentChoice::Sage => Color32::from_rgb(0xAF, 0xCA, 0x78),
             AccentChoice::Indigo => Color32::from_rgb(99, 102, 241),
             AccentChoice::Cyan => Color32::from_rgb(6, 182, 212),
             AccentChoice::Emerald => Color32::from_rgb(16, 185, 129),
@@ -72,6 +76,7 @@ impl AccentChoice {
     /// Readable variant of the accent for text on dark surfaces.
     pub fn bright(self) -> Color32 {
         match self {
+            AccentChoice::Sage => Color32::from_rgb(0xC9, 0xE0, 0x9E),
             AccentChoice::Indigo => Color32::from_rgb(129, 140, 248),
             AccentChoice::Cyan => Color32::from_rgb(34, 211, 238),
             AccentChoice::Emerald => Color32::from_rgb(52, 211, 153),
@@ -83,6 +88,7 @@ impl AccentChoice {
     /// Darker shade used for pressed states.
     pub fn deep(self) -> Color32 {
         match self {
+            AccentChoice::Sage => Color32::from_rgb(0x6E, 0x87, 0x46),
             AccentChoice::Indigo => Color32::from_rgb(67, 56, 202),
             AccentChoice::Cyan => Color32::from_rgb(14, 116, 144),
             AccentChoice::Emerald => Color32::from_rgb(4, 120, 87),

@@ -94,6 +94,78 @@ fn tint(c: Color32, alpha: u8) -> Color32 {
     Color32::from_rgba_unmultiplied(c.r(), c.g(), c.b(), alpha)
 }
 
+/// One soft blurred blob: many nested discs with a smooth
+/// (1-t²)² falloff so no banding edges remain visible.
+fn paint_blurred_blob(
+    painter: &egui::Painter,
+    center: Pos2,
+    radius: f32,
+    color: Color32,
+    peak_alpha: u8,
+) {
+    const LAYERS: usize = 20;
+    for i in (1..=LAYERS).rev() {
+        let t = i as f32 / LAYERS as f32; // 1.0 at edge → ~0 at core
+        let rr = radius * t;
+        let falloff = (1.0 - t * t).powi(2);
+        let a = (peak_alpha as f32 * falloff).clamp(0.0, 255.0) as u8;
+        if a == 0 {
+            continue;
+        }
+        painter.circle_filled(center, rr, tint(color, a));
+    }
+}
+
+/// Full-window vertical gradient whose light band slowly rises and falls.
+fn paint_animated_gradient(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    accent: AccentChoice,
+    dark: bool,
+    time: f32,
+) {
+    const SLICES: usize = 64;
+    let h = rect.height();
+    if h <= 0.0 {
+        return;
+    }
+    // Two light bands drifting at different speeds = flowing gradient.
+    let band1 = 0.5 + 0.38 * (time * 0.10).sin();
+    let band2 = 0.5 + 0.42 * (time * 0.063 + 2.1).cos();
+    let (base, glow) = if dark {
+        (
+            Color32::from_rgb(8, 10, 16),
+            accent.color(),
+        )
+    } else {
+        (
+            Color32::from_rgb(238, 241, 247),
+            accent.color(),
+        )
+    };
+    for i in 0..SLICES {
+        let t = i as f32 / SLICES as f32;
+        let g1 = (-((t - band1) * (t - band1)) / 0.045).exp();
+        let g2 = (-((t - band2) * (t - band2)) / 0.09).exp();
+        let strength = if dark {
+            0.05 + 0.30 * g1 + 0.16 * g2
+        } else {
+            0.04 + 0.20 * g1 + 0.12 * g2
+        };
+        let s = strength.clamp(0.0, 0.42);
+        let r = (base.r() as f32 + (glow.r() as f32 - base.r() as f32) * s) as u8;
+        let g = (base.g() as f32 + (glow.g() as f32 - base.g() as f32) * s) as u8;
+        let b = (base.b() as f32 + (glow.b() as f32 - base.b() as f32) * s) as u8;
+        let y0 = rect.min.y + h * t;
+        let y1 = rect.min.y + h * (i as f32 + 1.05) / SLICES as f32;
+        painter.rect_filled(
+            egui::Rect::from_min_max(egui::pos2(rect.min.x, y0), egui::pos2(rect.max.x, y1)),
+            egui::CornerRadius::ZERO,
+            Color32::from_rgb(r, g, b),
+        );
+    }
+}
+
 /// Paint the ambient backdrop. Call once per frame before panels.
 /// When `motion` is false a single static frame is painted.
 pub fn paint(ctx: &egui::Context, dark: bool, motion: bool, accent: AccentChoice) {
@@ -108,22 +180,27 @@ pub fn paint(ctx: &egui::Context, dark: bool, motion: bool, accent: AccentChoice
     let palette = [accent.color(), accent.bright(), accent.deep()];
     let vis = |a: u8| if dark { a } else { a.saturating_add(20) };
 
-    // Soft aurora washes (kept quiet so geometry leads).
+    // Animated gradient foundation: light bands flowing vertically.
+    paint_animated_gradient(&painter, rect, accent, dark, time);
+
+    // Blurred gradient blobs riding the gradient (slow Lissajous drift).
+    // Big, soft, out-of-focus washes — the dominant backdrop element.
     let breathe = 1.0 + 0.05 * (time * 0.35).sin();
-    let glows = [
-        (0.88, 0.08, 340.0, 0usize),
-        (0.10, 0.94, 300.0, 1usize),
-        (0.72, 0.88, 230.0, 2usize),
+    let orbit_r = rect.width().min(rect.height()) * 0.28;
+    let blobs = [
+        // (cx, cy, radius, palette idx, peak alpha, x-speed, y-speed, phase)
+        (0.50, 0.40, 460.0, 0usize, 34u8, 0.10, 0.13, 0.0),
+        (0.54, 0.58, 420.0, 1usize, 30u8, 0.08, 0.10, 2.4),
+        (0.46, 0.62, 340.0, 2usize, 36u8, 0.12, 0.08, 4.4),
+        (0.50, 0.46, 560.0, 0usize, 18u8, 0.05, 0.06, 1.2),
     ];
-    for (gx, gy, r, ci) in glows {
+    for (cx, cy, r, ci, peak, sx, sy, ph) in blobs {
         let c = Pos2::new(
-            rect.min.x + rect.width() * gx,
-            rect.min.y + rect.height() * gy,
+            rect.min.x + rect.width() * cx + orbit_r * (time * sx + ph).cos(),
+            rect.min.y + rect.height() * cy + orbit_r * 0.7 * (time * sy + ph * 1.3).sin(),
         );
-        for (k, div) in [4, 3, 2, 1].iter().enumerate() {
-            let rr = r * breathe / *div as f32;
-            painter.circle_filled(c, rr, tint(palette[ci], vis(10 + k as u8 * 3)));
-        }
+        let rr = r * breathe;
+        paint_blurred_blob(&painter, c, rr, palette[ci], vis(peak));
     }
 
     // Faint dot grid with travelling shimmer.
