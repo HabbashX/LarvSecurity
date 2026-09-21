@@ -96,7 +96,7 @@ fn verify_hmac(
 
 // ----------------------------------------------------------------- RSA ---
 
-fn parse_rsa_private(pem: &str) -> Result<rsa::RsaPrivateKey, ToolkitError> {
+pub(crate) fn parse_rsa_private(pem: &str) -> Result<rsa::RsaPrivateKey, ToolkitError> {
     use rsa::pkcs1::DecodeRsaPrivateKey;
     let trimmed = pem.trim();
     rsa::RsaPrivateKey::from_pkcs8_pem(trimmed)
@@ -104,7 +104,7 @@ fn parse_rsa_private(pem: &str) -> Result<rsa::RsaPrivateKey, ToolkitError> {
         .map_err(|_| ToolkitError::UnsupportedKeyFormat)
 }
 
-fn parse_rsa_public(pem: &str, priv_fallback: Option<&str>) -> Result<rsa::RsaPublicKey, ToolkitError> {
+pub(crate) fn parse_rsa_public(pem: &str, priv_fallback: Option<&str>) -> Result<rsa::RsaPublicKey, ToolkitError> {
     use rsa::pkcs1::DecodeRsaPublicKey;
     let trimmed = pem.trim();
     if let Ok(k) = rsa::RsaPublicKey::from_public_key_pem(trimmed) {
@@ -214,7 +214,7 @@ fn verify_rsa(
 
 // ------------------------------------------------------------------ EC ---
 
-fn parse_p256_signing(pem: &str) -> Result<p256::ecdsa::SigningKey, ToolkitError> {
+pub(crate) fn parse_p256_signing(pem: &str) -> Result<p256::ecdsa::SigningKey, ToolkitError> {
     let trimmed = pem.trim();
     p256::ecdsa::SigningKey::from_pkcs8_pem(trimmed)
         .or_else(|_| {
@@ -227,7 +227,7 @@ fn parse_p256_signing(pem: &str) -> Result<p256::ecdsa::SigningKey, ToolkitError
         .map_err(|_| ToolkitError::UnsupportedKeyFormat)
 }
 
-fn parse_p384_signing(pem: &str) -> Result<p384::ecdsa::SigningKey, ToolkitError> {
+pub(crate) fn parse_p384_signing(pem: &str) -> Result<p384::ecdsa::SigningKey, ToolkitError> {
     let trimmed = pem.trim();
     p384::ecdsa::SigningKey::from_pkcs8_pem(trimmed)
         .or_else(|_| {
@@ -255,12 +255,12 @@ fn parse_p521_signing(pem: &str) -> Result<p521::ecdsa::SigningKey, ToolkitError
         .map_err(|_| ToolkitError::UnsupportedKeyFormat)
 }
 
-fn parse_p256_verifying(pem: &str) -> Result<p256::ecdsa::VerifyingKey, ToolkitError> {
+pub(crate) fn parse_p256_verifying(pem: &str) -> Result<p256::ecdsa::VerifyingKey, ToolkitError> {
     p256::ecdsa::VerifyingKey::from_public_key_pem(pem.trim())
         .map_err(|_| ToolkitError::UnsupportedKeyFormat)
 }
 
-fn parse_p384_verifying(pem: &str) -> Result<p384::ecdsa::VerifyingKey, ToolkitError> {
+pub(crate) fn parse_p384_verifying(pem: &str) -> Result<p384::ecdsa::VerifyingKey, ToolkitError> {
     p384::ecdsa::VerifyingKey::from_public_key_pem(pem.trim())
         .map_err(|_| ToolkitError::UnsupportedKeyFormat)
 }

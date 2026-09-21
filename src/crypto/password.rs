@@ -140,6 +140,12 @@ pub const WORDLIST: &[&str] = &[
 ];
 
 pub fn generate_passphrase(cfg: &PassphraseConfig) -> Result<String, ToolkitError> {
+    let owned: Vec<String> = WORDLIST.iter().map(|s| s.to_string()).collect();
+    generate_passphrase_with_list(cfg, &owned)
+}
+
+/// Passphrase from a caller-supplied wordlist (diceware with your own list).
+pub fn generate_passphrase_with_list(cfg: &PassphraseConfig, list: &[String]) -> Result<String, ToolkitError> {
     if cfg.words == 0 || cfg.words > 64 {
         return Err(ToolkitError::InvalidInput(
             "words must be between 1 and 64".to_string(),
@@ -151,8 +157,11 @@ pub fn generate_passphrase(cfg: &PassphraseConfig) -> Result<String, ToolkitErro
         ));
     }
     let mut words: Vec<String> = Vec::with_capacity(cfg.words);
+    if list.is_empty() {
+        return Err(ToolkitError::InvalidInput("wordlist is empty".into()));
+    }
     for _ in 0..cfg.words {
-        let w = WORDLIST[rand_index(WORDLIST.len())?];
+        let w = &list[rand_index(list.len())?];
         if cfg.capitalize {
             let mut c = w.chars();
             let first = c.next().unwrap_or('x').to_uppercase().to_string();

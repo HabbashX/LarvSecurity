@@ -3,6 +3,7 @@ use eframe::egui;
 use crate::app::navigation::Tool;
 use crate::app::state::AppState;
 use crate::app::theme::{apply_theme, ThemeMode};
+use crate::utils::i18n::t;
 
 pub mod navigation;
 pub mod state;
@@ -14,7 +15,12 @@ pub struct ToolkitApp {
 
 impl ToolkitApp {
     pub fn new(cc: &eframe::CreationContext<'_>) -> Self {
-        let state = AppState::default();
+        let mut state = AppState::default();
+        // Load portable workspace (appearance, favorites, presets — never secrets).
+        if let Ok(ws) = crate::utils::config::load_from(&crate::utils::config::config_path()) {
+            state.apply_workspace(&ws);
+            state.set_status(true, "Workspace settings loaded.");
+        }
         cc.egui_ctx.set_pixels_per_point(state.ui_scale);
         apply_theme(
             &cc.egui_ctx,
@@ -42,11 +48,25 @@ impl ToolkitApp {
         ctx.set_pixels_per_point(s.ui_scale);
         apply_theme(ctx, s.theme, s.accent, s.base_size, s.mono_ui, s.corner);
     }
+
+    /// Vault auto-lock + duress-safe session handling.
+    fn poll_vault_lock(&mut self) {
+        if self.state.vault_unlocked {
+            if let Some(at) = self.state.vault_lock_at {
+                if std::time::Instant::now() >= at {
+                    crate::ui::vault::lock_vault(&mut self.state);
+                    self.state.set_status(true, "Vault auto-locked.");
+                }
+            }
+        }
+    }
 }
 
 impl eframe::App for ToolkitApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.handle_global_keys(ctx);
+        self.poll_vault_lock();
+        let lang = self.state.lang;
 
         // Ambient animated backdrop (beneath translucent panels).
         let dark = ctx.style().visuals.dark_mode;
@@ -58,8 +78,8 @@ impl eframe::App for ToolkitApp {
         // Top bar.
         egui::TopBottomPanel::top("topbar").show(ctx, |ui| {
             ui.horizontal(|ui| {
-                ui.label(egui::RichText::new("Security Toolkit").strong().size(14.0));
-                crate::ui::components::chip(ui, "LOCAL", self.state.accent.bright());
+                ui.label(egui::RichText::new(t(lang, "Security Toolkit")).strong().size(14.0));
+                crate::ui::components::chip(ui, t(lang, "LOCAL"), self.state.accent.bright());
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     egui::ComboBox::from_label("")
                         .selected_text(format!("Theme: {}", self.state.theme.label()))
@@ -74,7 +94,9 @@ impl eframe::App for ToolkitApp {
                             }
                         });
                     ui.checkbox(&mut self.state.motion, "Motion");
-                    if ui.button("Tools (Ctrl+K)").clicked() {
+                    let secs = self.state.session_start.elapsed().as_secs();
+                    ui.weak(format!("{:02}:{:02}", secs / 60, secs % 60));
+                    if ui.button(t(lang, "Tools (Ctrl+K)")).clicked() {
                         self.state.palette_open = true;
                         self.state.palette_query.clear();
                     }
@@ -93,7 +115,7 @@ impl eframe::App for ToolkitApp {
                     };
                     ui.colored_label(color, &msg);
                 } else {
-                    ui.weak("Ready.");
+                    ui.weak(t(lang, "Ready."));
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.weak("All operations run locally on this machine.");
@@ -133,10 +155,24 @@ impl eframe::App for ToolkitApp {
                             Tool::Keys => crate::ui::keys::show(ui, &mut self.state),
                             Tool::Encoding => crate::ui::encoding::show(ui, &mut self.state),
                             Tool::Random => crate::ui::random::show(ui, &mut self.state),
+                            Tool::Totp => crate::ui::totp::show(ui, &mut self.state),
+                            Tool::Vault => crate::ui::vault::show(ui, &mut self.state),
+                            Tool::Checksums => crate::ui::files::show_checksums(ui, &mut self.state),
+                            Tool::Shredder => crate::ui::files::show_shredder(ui, &mut self.state),
+                            Tool::JsonTools => crate::ui::devtools::show_json(ui, &mut self.state),
+                            Tool::TimeCron => crate::ui::devtools::show_time(ui, &mut self.state),
+                            Tool::RegexTester => crate::ui::devtools::show_regex(ui, &mut self.state),
+                            Tool::DiffViewer => crate::ui::devtools::show_diff(ui, &mut self.state),
+                            Tool::QrCodes => crate::ui::devtools::show_qr(ctx, ui, &mut self.state),
+                            Tool::Signatures => crate::ui::signing::show_signatures(ui, &mut self.state),
+                            Tool::Hmac => crate::ui::signing::show_hmac(ui, &mut self.state),
+                            Tool::Certificates => crate::ui::certs::show(ui, &mut self.state),
+                            Tool::SshKeys => crate::ui::ssh::show(ui, &mut self.state),
+                            Tool::Activity => crate::ui::activity::show(ui, &mut self.state),
                             Tool::Appearance => {
                                 crate::ui::appearance::show(ctx, ui, &mut self.state)
                             }
-                            Tool::About => crate::ui::about::show(ui, &mut self.state),
+                            Tool::About => crate::ui::about::show(ctx, ui, &mut self.state),
                         }
                     });
                 });

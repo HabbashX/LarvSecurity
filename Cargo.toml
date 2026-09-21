@@ -43,6 +43,14 @@ pkcs1 = { version = "=0.7.5", features = ["pem"] }
 sec1 = { version = "=0.7.3", features = ["pem"] }
 rfd = { version = "=0.15.4" }
 arboard = { version = "=3.6.1" }
+data-encoding = "2"
+chrono = "0.4"
+regex = "1"
+qrcode = "0.14"
+ed25519-dalek = { version = "3", features = ["pkcs8", "pem", "rand_core", "alloc", "zeroize"] }
+ed25519 = { version = "3", features = ["pkcs8", "pem", "alloc"] }
+x509-parser = "0.16"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "rustls-tls-native-roots"] }
 
 [dev-dependencies]
 hex-literal = "=0.4.1"

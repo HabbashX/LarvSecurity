@@ -2,7 +2,8 @@ use eframe::egui;
 
 use crate::app::state::AppState;
 use crate::app::theme::{apply_theme, install_custom_font, AccentChoice, ThemeMode};
-use crate::ui::components::{card, header, info_box};
+use crate::ui::components::{card, header, info_box, primary_button};
+use crate::utils::i18n::Language;
 
 pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
     header(
@@ -20,6 +21,7 @@ pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
         state.ui_scale.to_bits(),
         state.corner,
         state.motion,
+        state.lang,
     );
 
     ui.horizontal_top(|ui| {
@@ -69,6 +71,63 @@ pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
             card(ui, "Motion", |ui| {
                 ui.checkbox(&mut state.motion, "Animated backdrop");
                 ui.weak("Drifting geometries, aurora washes, dot grid. Turn off to reduce distraction.");
+            });
+
+            ui.add_space(8.0);
+            card(ui, "Language", |ui| {
+                ui.horizontal(|ui| {
+                    for l in Language::all() {
+                        if ui.selectable_label(state.lang == *l, l.label()).clicked() {
+                            state.lang = *l;
+                        }
+                    }
+                });
+                ui.weak("Arabic covers sidebar, top bar, palette, and common actions. Tool bodies stay English for now.");
+            });
+
+            ui.add_space(8.0);
+            card(ui, "Workspace file", |ui| {
+                ui.weak("Saves appearance, language, favorites, recents, and JWT presets — never secrets.");
+                ui.monospace(crate::utils::config::config_path().to_string_lossy().to_string());
+                ui.horizontal(|ui| {
+                    if primary_button(ui, state, "Save settings").clicked() {
+                        match crate::utils::config::save_to(
+                            &crate::utils::config::config_path(),
+                            &state.snapshot_workspace(),
+                        ) {
+                            Ok(()) => {
+                                state.set_status(true, "Settings saved next to the app.");
+                                state.log("Appearance", "workspace saved");
+                            }
+                            Err(e) => state.set_status(false, format!("{e}")),
+                        }
+                    }
+                    if ui.button("Export").clicked() {
+                        if let Some(p) = rfd::FileDialog::new().set_file_name("larv-workspace.json").save_file() {
+                            match crate::utils::config::save_to(&p, &state.snapshot_workspace()) {
+                                Ok(()) => state.set_status(true, "Workspace exported."),
+                                Err(e) => state.set_status(false, format!("{e}")),
+                            }
+                        }
+                    }
+                    if ui.button("Import").clicked() {
+                        if let Some(p) = rfd::FileDialog::new().pick_file() {
+                            match crate::utils::config::load_from(&p) {
+                                Ok(ws) => {
+                                    // Custom fonts can't round-trip (bytes not stored); keep current.
+                                    let keep_name = state.custom_font_name.clone();
+                                    let keep_bytes = state.custom_font_bytes.clone();
+                                    state.apply_workspace(&ws);
+                                    state.custom_font_name = keep_name;
+                                    state.custom_font_bytes = keep_bytes;
+                                    state.set_status(true, "Workspace imported.");
+                                    state.log("Appearance", "workspace imported");
+                                }
+                                Err(e) => state.set_status(false, format!("{e}")),
+                            }
+                        }
+                    }
+                });
             });
         });
 
@@ -146,6 +205,7 @@ pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
         state.ui_scale.to_bits(),
         state.corner,
         state.motion,
+        state.lang,
     );
     if before != after {
         if state.custom_font_bytes.is_some() && state.custom_font_name.is_some() {

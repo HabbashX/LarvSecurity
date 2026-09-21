@@ -17,6 +17,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
             (JwtTab::Generate, "Generate"),
             (JwtTab::Decode, "Decode"),
             (JwtTab::Verify, "Verify"),
+            (JwtTab::Jwe, "JWE (encrypted)"),
         ] {
             if ui
                 .selectable_label(state.jwt_tab == tab, label)
@@ -37,6 +38,7 @@ pub fn show(ui: &mut egui::Ui, state: &mut AppState) {
         JwtTab::Generate => show_generate(ui, state),
         JwtTab::Decode => show_decode(ui, state),
         JwtTab::Verify => show_verify(ui, state),
+        JwtTab::Jwe => show_jwe(ui, state),
     }
 }
 
@@ -81,8 +83,15 @@ fn show_generate(ui: &mut egui::Ui, state: &mut AppState) {
             if primary_button(ui, state, "Generate token").clicked() {
                 match generate_token(state.jwt_alg, &state.jwt_payload, &state.jwt_key) {
                     Ok(t) => {
+                        let stamp = chrono::Local::now().format("%H:%M:%S").to_string();
+                        let prefix: String = t.chars().take(18).collect();
+                        state.jwt_history.push(format!("{stamp} {} {prefix}…", state.jwt_alg.as_str()));
+                        if state.jwt_history.len() > 25 {
+                            state.jwt_history.remove(0);
+                        }
                         state.jwt_token = t;
                         state.set_status(true, "Token generated.");
+                        state.log("JWT", "token generated");
                     }
                     Err(e) => state.set_status(false, format!("{e}")),
                 }
@@ -101,6 +110,149 @@ fn show_generate(ui: &mut egui::Ui, state: &mut AppState) {
             );
             let tok = state.jwt_token.clone();
             copy_button(&mut cols[1], state, "token", &tok);
+        }
+    });
+
+    show_snippets(ui, state);
+    show_presets(ui, state);
+    show_token_history(ui, state);
+}
+
+const CLAIM_TEMPLATES: &[(&str, &str)] = &[
+    ("User", "{\n  \"sub\": \"12345\",\n  \"name\": \"John\",\n  \"role\": \"USER\",\n  \"iat\": 1720000000,\n  \"exp\": 1999999999\n}"),
+    ("Admin", "{\n  \"sub\": \"1\",\n  \"role\": \"ADMIN\",\n  \"scope\": \"read write admin\",\n  \"iat\": 1720000000,\n  \"exp\": 1999999999\n}"),
+    ("Service", "{\n  \"iss\": \"payments-svc\",\n  \"sub\": \"payments-svc\",\n  \"aud\": \"ledger-api\",\n  \"jti\": \"b3f1c0de\",\n  \"iat\": 1720000000,\n  \"exp\": 1999999999\n}"),
+    ("Subscription", "{\n  \"sub\": \"cus_9f31\",\n  \"plan\": \"pro\",\n  \"entitlements\": [\"exports\", \"sso\"],\n  \"trial\": false,\n  \"iat\": 1720000000,\n  \"exp\": 1999999999\n}"),
+    ("Mobile", "{\n  \"sub\": \"device:pixel-8:01HZX\",\n  \"platform\": \"android\",\n  \"app\": \"3.2.1\",\n  \"iat\": 1720000000,\n  \"exp\": 1999999999\n}"),
+];
+
+fn show_snippets(ui: &mut egui::Ui, state: &mut AppState) {
+    if state.jwt_token.is_empty() {
+        return;
+    }
+    ui.add_space(6.0);
+    crate::ui::components::card(ui, "Use this token", |ui| {
+        egui::ComboBox::from_label("Snippet")
+            .selected_text(&state.snippet_lang)
+            .show_ui(ui, |ui| {
+                for l in ["cURL", "Python", "JavaScript", "Rust"] {
+                    ui.selectable_value(&mut state.snippet_lang, l.to_string(), l);
+                }
+            });
+        let t = &state.jwt_token;
+        let code = match state.snippet_lang.as_str() {
+            "Python" => format!("import requests\nr = requests.get(\"https://api.example.com/me\",\n    headers={{\"Authorization\": \"Bearer {t}\"}})\nprint(r.status_code, r.text)"),
+            "JavaScript" => format!("const res = await fetch(\"https://api.example.com/me\", {{\n  headers: {{ Authorization: \"Bearer {t}\" }}\n}});\nconsole.log(res.status, await res.text());"),
+            "Rust" => format!("let res = reqwest::blocking::Client::new()\n    .get(\"https://api.example.com/me\")\n    .bearer_auth(\"{t}\")\n    .send()?;"),
+            _ => format!("curl -H \"Authorization: Bearer {t}\" https://api.example.com/me"),
+        };
+        ui.code(&code);
+        copy_button(ui, state, "snippet", &code);
+    });
+}
+
+fn show_presets(ui: &mut egui::Ui, state: &mut AppState) {
+    ui.add_space(6.0);
+    crate::ui::components::card(ui, "Payload presets (saved locally)", |ui| {
+        ui.label("Start from a template:");
+        ui.horizontal_wrapped(|ui| {
+            for (name, body) in CLAIM_TEMPLATES {
+                if ui.small_button(*name).clicked() {
+                    state.jwt_payload = body.to_string();
+                    state.set_status(true, format!("{name} template loaded."));
+                }
+            }
+        });
+        ui.separator();
+        ui.horizontal(|ui| {
+            ui.label("Save current as:");
+            ui.text_edit_singleline(&mut state.jwt_preset_name);
+            if ui.button("Save preset").clicked() {
+                if state.jwt_preset_name.trim().is_empty() {
+                    state.set_status(false, "Name the preset first.");
+                } else {
+                    state.jwt_presets.push(crate::utils::config::JwtPreset {
+                        name: state.jwt_preset_name.trim().to_string(),
+                        payload: state.jwt_payload.clone(),
+                    });
+                    state.jwt_preset_name.clear();
+                    state.set_status(true, "Preset saved (in workspace file on Save).");
+                }
+            }
+        });
+        let mut apply: Option<String> = None;
+        let mut del: Option<usize> = None;
+        for (i, p) in state.jwt_presets.clone().iter().enumerate() {
+            ui.horizontal(|ui| {
+                ui.label(&p.name);
+                if ui.small_button("Apply").clicked() {
+                    apply = Some(p.payload.clone());
+                }
+                if ui.small_button("Delete").clicked() {
+                    del = Some(i);
+                }
+            });
+        }
+        if let Some(body) = apply {
+            state.jwt_payload = body;
+        }
+        if let Some(i) = del {
+            state.jwt_presets.remove(i);
+        }
+    });
+}
+
+fn show_token_history(ui: &mut egui::Ui, state: &mut AppState) {
+    if state.jwt_history.is_empty() {
+        return;
+    }
+    ui.add_space(6.0);
+    crate::ui::components::card(ui, "Session history (this run only)", |ui| {
+        for h in state.jwt_history.clone().iter().rev().take(10) {
+            ui.monospace(h);
+        }
+        if ui.small_button("Clear history").clicked() {
+            state.jwt_history.clear();
+        }
+    });
+    info_box(ui, "History keeps metadata (time, algorithm, prefix) — never the full token. Tokens clear on quit.");
+}
+
+fn show_jwe(ui: &mut egui::Ui, state: &mut AppState) {
+    use crate::crypto::jwe::{decrypt_jwe, encrypt_jwe, parse_cek, random_cek_b64};
+    info_box(ui, "JWE compact, alg=dir enc=A256GCM: the payload is ENCRYPTED with a 256-bit key you hold. Unlike signed JWTs, this is confidential.");
+    ui.columns(2, |cols| {
+        cols[0].label("Payload (JSON)");
+        cols[0].add(egui::TextEdit::multiline(&mut state.jwe_payload).code_editor().desired_rows(8).desired_width(f32::INFINITY));
+        secret_input(&mut cols[0], "Content key (32 bytes hex/base64)", &mut state.jwe_key, &mut state.jwe_key_visible, false);
+        cols[0].horizontal(|ui| {
+            if ui.small_button("Random key").clicked() {
+                state.jwe_key = random_cek_b64();
+            }
+            if primary_button(ui, state, "Encrypt (JWE)").clicked() {
+                match parse_cek(&state.jwe_key).and_then(|k| encrypt_jwe(&state.jwe_payload, &k, None)) {
+                    Ok(c) => {
+                        state.jwe_output = c;
+                        state.set_status(true, "JWE encrypted.");
+                        state.log("JWT", "JWE encrypted");
+                    }
+                    Err(e) => state.set_status(false, format!("{e}")),
+                }
+            }
+        });
+        cols[1].label("JWE compact");
+        cols[1].add(egui::TextEdit::multiline(&mut state.jwe_output).code_editor().desired_rows(8).desired_width(f32::INFINITY));
+        let o = state.jwe_output.clone();
+        copy_button(&mut cols[1], state, "JWE", &o);
+        if primary_button(&mut cols[1], state, "Decrypt").clicked() {
+            match parse_cek(&state.jwe_key).and_then(|k| decrypt_jwe(&state.jwe_output, &k, None)) {
+                Ok(p) => {
+                    state.jwe_output = p;
+                    state.set_status(true, "JWE decrypted.");
+                    state.log("JWT", "JWE decrypted");
+                }
+                Err(e) => state.set_status(false, format!("{e}")),
+            }
         }
     });
 }
@@ -231,8 +383,10 @@ fn show_verify(ui: &mut egui::Ui, state: &mut AppState) {
             Ok(report) => {
                 if report.signature_valid {
                     state.set_status(true, "Signature valid.");
+                    state.log("JWT", "signature verified (valid)");
                 } else {
                     state.set_status(false, "Signature invalid.");
+                    state.log("JWT", "signature verified (invalid)");
                 }
                 // Store last report implicitly via status + re-render below.
                 state.jwt_token = serde_json::to_string_pretty(&report).unwrap_or_default();

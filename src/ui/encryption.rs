@@ -173,7 +173,7 @@ fn do_encrypt(state: &mut AppState) {
         ) {
             Ok(env) => {
                 state.enc_output = env;
-                state.set_status(true, "Encrypted (password mode).");
+                state.set_status(true, "Encrypted (password mode)."); state.log("Encrypt", "text encrypted");
             }
             Err(e) => state.set_status(false, format!("{e}")),
         }
@@ -200,7 +200,7 @@ fn do_encrypt(state: &mut AppState) {
                     format!("{{\n  \"algorithm\": \"{}\",\n  \"mode\": \"raw-key\",\n  \"package_b64\": \"{pkg}\"\n}}", state.enc_alg.label())
                 };
                 state.enc_output = shown;
-                state.set_status(true, "Encrypted (raw-key mode).");
+                state.set_status(true, "Encrypted (raw-key mode)."); state.log("Encrypt", "text encrypted");
             }
             Err(e) => state.set_status(false, format!("{e}")),
         }
@@ -216,7 +216,7 @@ fn do_decrypt(state: &mut AppState) {
         match decrypt_with_password(&state.dec_input, &state.dec_password, aad) {
             Ok(pt) => {
                 state.dec_output = String::from_utf8_lossy(&pt).into_owned();
-                state.set_status(true, "Decrypted.");
+                state.set_status(true, "Decrypted."); state.log("Encrypt", "text decrypted");
             }
             Err(e) => {
                 state.dec_output.clear();
@@ -241,7 +241,7 @@ fn do_decrypt(state: &mut AppState) {
                 match decrypt_with_raw_key(state.enc_alg, &pkg, &key, state.dec_aad.as_bytes()) {
                     Ok(pt) => {
                         state.dec_output = String::from_utf8_lossy(&pt).into_owned();
-                        state.set_status(true, "Decrypted.");
+                        state.set_status(true, "Decrypted."); state.log("Encrypt", "text decrypted");
                     }
                     Err(e) => {
                         state.dec_output.clear();
@@ -263,7 +263,7 @@ fn do_decrypt(state: &mut AppState) {
     match decrypt_with_raw_key(state.enc_alg, &state.dec_input, &key, state.dec_aad.as_bytes()) {
         Ok(pt) => {
             state.dec_output = String::from_utf8_lossy(&pt).into_owned();
-            state.set_status(true, "Decrypted.");
+            state.set_status(true, "Decrypted."); state.log("Encrypt", "text decrypted");
         }
         Err(e) => {
             state.dec_output.clear();
