@@ -9,7 +9,8 @@ fn main() -> eframe::Result<()> {
         viewport: egui::ViewportBuilder::default()
             .with_inner_size([1180.0, 760.0])
             .with_min_inner_size([900.0, 600.0])
-            .with_title("Security Toolkit"),
+            .with_title("Security Toolkit")
+            .with_icon(ui::icon::window_icon()),
         ..Default::default()
     };
     eframe::run_native(

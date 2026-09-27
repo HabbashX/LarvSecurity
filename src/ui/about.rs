@@ -4,6 +4,15 @@ use crate::app::state::AppState;
 use crate::ui::components::{card, header, info_box, primary_button, warn_box};
 
 pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
+    ui.horizontal(|ui| {
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(72.0, 72.0), egui::Sense::hover());
+        crate::ui::icon::paint_padlock(&ui.painter().clone(), rect);
+        ui.vertical(|ui| {
+            ui.heading(format!("LarvSecurity v{}", env!("CARGO_PKG_VERSION")));
+            ui.label(egui::RichText::new("Local-first security workstation.").weak());
+        });
+    });
+    ui.add_space(4.0);
     header(
         ui,
         "About",
@@ -62,11 +71,11 @@ pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
                     state.update_status = "Checking…".to_string();
                     let ctx2 = ctx.clone();
                     std::thread::spawn(move || {
-                        let msg = match crate::crypto::net::latest_release_tag() {
-                            Ok(tag) if tag.trim() == "v0.1.0" => "You are on the latest release (v0.1.0).".to_string(),
-                            Ok(tag) => format!("New release available: {tag} (you have v0.1.0). See GitHub releases."),
-                            Err(e) => format!("{e}"),
-                        };
+                    let msg = match crate::crypto::net::latest_release_tag() {
+                        Ok(tag) if tag.trim() == concat!("v", env!("CARGO_PKG_VERSION")) => format!("You are on the latest release (v{}).", env!("CARGO_PKG_VERSION")),
+                        Ok(tag) => format!("New release available: {tag} (you have v{}). See GitHub releases.", env!("CARGO_PKG_VERSION")),
+                        Err(e) => format!("{e}"),
+                    };
                         ctx2.data_mut(|d| d.insert_temp(egui::Id::new("update_result"), msg));
                         ctx2.request_repaint();
                     });

@@ -11,7 +11,7 @@ use crate::models::ToolkitError;
 fn client() -> Result<reqwest::blocking::Client, ToolkitError> {
     reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(12))
-        .user_agent("LarvSecurity/0.1.0 (local-first security toolkit)")
+        .user_agent(concat!("LarvSecurity/", env!("CARGO_PKG_VERSION"), " (local-first security toolkit)"))
         .build()
         .map_err(|e| ToolkitError::Other(format!("network unavailable: {e}")))
 }

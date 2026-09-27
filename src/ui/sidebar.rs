@@ -11,7 +11,7 @@ pub fn show_sidebar(ui: &mut egui::Ui, state: &mut AppState) {
         ui.label(egui::RichText::new(t(lang, "Security Toolkit")).strong().size(14.0));
     });
     ui.horizontal(|ui| {
-        ui.label(egui::RichText::new("v0.1.0").small().weak());
+        ui.label(egui::RichText::new(concat!("v", env!("CARGO_PKG_VERSION"))).small().weak());
         chip(ui, t(lang, "OFFLINE"), state.accent.bright());
     });
     ui.separator();

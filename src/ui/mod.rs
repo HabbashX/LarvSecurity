@@ -9,6 +9,7 @@ pub mod encoding;
 pub mod encryption;
 pub mod files;
 pub mod hashing;
+pub mod icon;
 pub mod jwt;
 pub mod keys;
 pub mod password;

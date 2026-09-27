@@ -1,0 +1,9 @@
+<svg viewBox="0 0 522 522" xmlns="http://www.w3.org/2000/svg" role="img">
+  <title>App icon</title>
+  <desc>Minimal flat geometric padlock icon on a dark navy background</desc>
+  <rect x="0" y="0" width="512" height="512" rx="100" fill="#0C223B"/>
+  <rect x="176" y="240" width="160" height="130" rx="20" fill="#E6F1FB"/>
+  <path d="M196 240 V190 C196 148 222 118 256 118 C290 118 316 148 316 190 V240" fill="none" stroke="#E6F1FB" stroke-width="26"/>
+  <circle cx="256" cy="295" r="18" fill="#0C223B"/>
+  <rect x="246" y="300" width="20" height="40" rx="8" fill="#0C223B"/>
+</svg>
