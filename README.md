@@ -60,13 +60,18 @@ Windows / macOS / Linux supported via `eframe`.
 ## Project layout
 
 ```text
-src/
-├── main.rs            # eframe entry point
-├── app/               # ToolkitApp, navigation, theme, central state
-├── ui/                # one module per tool + sidebar, components, background FX
-├── crypto/            # crypto/service layer (UI never touches primitives)
-├── models/            # configs, JWT/cipher types, structured errors
-└── utils/             # clipboard auto-clear, validation, secure memory
+.
+├── assets/              # app icon (icon.svg)
+├── src/
+│   ├── main.rs            # eframe entry point (no console window on Windows)
+│   ├── app/               # ToolkitApp, navigation, theme, central state
+│   ├── ui/
+│   │   ├── sidebar.rs / components.rs / background.rs / icon.rs
+│   │   └── tools/           # one module per tool page
+│   ├── crypto/            # crypto/service layer (UI never touches primitives)
+│   ├── models/            # configs, JWT/cipher types, structured errors
+│   └── utils/             # clipboard auto-clear, i18n, workspace, validation
+└── .github/workflows/   # CI (cargo test)
 ```
 
 ## License

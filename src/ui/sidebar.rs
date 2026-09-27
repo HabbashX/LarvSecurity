@@ -60,7 +60,7 @@ pub fn show_sidebar(ui: &mut egui::Ui, state: &mut AppState) {
     ui.with_layout(egui::Layout::bottom_up(egui::Align::LEFT), |ui| {
         ui.separator();
         if state.vault_unlocked && ui.small_button(t(lang, "Lock")).clicked() {
-            crate::ui::vault::lock_vault(state);
+            crate::ui::tools::vault::lock_vault(state);
         }
         ui.label(
             egui::RichText::new(t(lang, "No telemetry. No network calls."))

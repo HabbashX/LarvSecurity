@@ -54,7 +54,7 @@ impl ToolkitApp {
         if self.state.vault_unlocked {
             if let Some(at) = self.state.vault_lock_at {
                 if std::time::Instant::now() >= at {
-                    crate::ui::vault::lock_vault(&mut self.state);
+                    crate::ui::tools::vault::lock_vault(&mut self.state);
                     self.state.set_status(true, "Vault auto-locked.");
                 }
             }
@@ -146,33 +146,33 @@ impl eframe::App for ToolkitApp {
                         ui.set_width(width);
                         let tool = self.state.tool;
                         match tool {
-                            Tool::Password => crate::ui::password::show(ui, &mut self.state),
+                            Tool::Password => crate::ui::tools::password::show(ui, &mut self.state),
                             Tool::JwtGenerate | Tool::JwtDecode | Tool::JwtVerify => {
-                                crate::ui::jwt::show(ui, &mut self.state)
+                                crate::ui::tools::jwt::show(ui, &mut self.state)
                             }
-                            Tool::Encrypt => crate::ui::encryption::show(ui, &mut self.state),
-                            Tool::Hash => crate::ui::hashing::show(ui, &mut self.state),
-                            Tool::Keys => crate::ui::keys::show(ui, &mut self.state),
-                            Tool::Encoding => crate::ui::encoding::show(ui, &mut self.state),
-                            Tool::Random => crate::ui::random::show(ui, &mut self.state),
-                            Tool::Totp => crate::ui::totp::show(ui, &mut self.state),
-                            Tool::Vault => crate::ui::vault::show(ui, &mut self.state),
-                            Tool::Checksums => crate::ui::files::show_checksums(ui, &mut self.state),
-                            Tool::Shredder => crate::ui::files::show_shredder(ui, &mut self.state),
-                            Tool::JsonTools => crate::ui::devtools::show_json(ui, &mut self.state),
-                            Tool::TimeCron => crate::ui::devtools::show_time(ui, &mut self.state),
-                            Tool::RegexTester => crate::ui::devtools::show_regex(ui, &mut self.state),
-                            Tool::DiffViewer => crate::ui::devtools::show_diff(ui, &mut self.state),
-                            Tool::QrCodes => crate::ui::devtools::show_qr(ctx, ui, &mut self.state),
-                            Tool::Signatures => crate::ui::signing::show_signatures(ui, &mut self.state),
-                            Tool::Hmac => crate::ui::signing::show_hmac(ui, &mut self.state),
-                            Tool::Certificates => crate::ui::certs::show(ui, &mut self.state),
-                            Tool::SshKeys => crate::ui::ssh::show(ui, &mut self.state),
-                            Tool::Activity => crate::ui::activity::show(ui, &mut self.state),
+                            Tool::Encrypt => crate::ui::tools::encryption::show(ui, &mut self.state),
+                            Tool::Hash => crate::ui::tools::hashing::show(ui, &mut self.state),
+                            Tool::Keys => crate::ui::tools::keys::show(ui, &mut self.state),
+                            Tool::Encoding => crate::ui::tools::encoding::show(ui, &mut self.state),
+                            Tool::Random => crate::ui::tools::random::show(ui, &mut self.state),
+                            Tool::Totp => crate::ui::tools::totp::show(ui, &mut self.state),
+                            Tool::Vault => crate::ui::tools::vault::show(ui, &mut self.state),
+                            Tool::Checksums => crate::ui::tools::files::show_checksums(ui, &mut self.state),
+                            Tool::Shredder => crate::ui::tools::files::show_shredder(ui, &mut self.state),
+                            Tool::JsonTools => crate::ui::tools::devtools::show_json(ui, &mut self.state),
+                            Tool::TimeCron => crate::ui::tools::devtools::show_time(ui, &mut self.state),
+                            Tool::RegexTester => crate::ui::tools::devtools::show_regex(ui, &mut self.state),
+                            Tool::DiffViewer => crate::ui::tools::devtools::show_diff(ui, &mut self.state),
+                            Tool::QrCodes => crate::ui::tools::devtools::show_qr(ctx, ui, &mut self.state),
+                            Tool::Signatures => crate::ui::tools::signing::show_signatures(ui, &mut self.state),
+                            Tool::Hmac => crate::ui::tools::signing::show_hmac(ui, &mut self.state),
+                            Tool::Certificates => crate::ui::tools::certs::show(ui, &mut self.state),
+                            Tool::SshKeys => crate::ui::tools::ssh::show(ui, &mut self.state),
+                            Tool::Activity => crate::ui::tools::activity::show(ui, &mut self.state),
                             Tool::Appearance => {
-                                crate::ui::appearance::show(ctx, ui, &mut self.state)
+                                crate::ui::tools::appearance::show(ctx, ui, &mut self.state)
                             }
-                            Tool::About => crate::ui::about::show(ctx, ui, &mut self.state),
+                            Tool::About => crate::ui::tools::about::show(ctx, ui, &mut self.state),
                         }
                     });
                 });
