@@ -30,6 +30,18 @@ impl ToolkitApp {
             state.mono_ui,
             state.corner,
         );
+        // Arabic needs a system font — egui's bundled fonts render tofu.
+        if state.lang == crate::utils::i18n::Language::Arabic {
+            let custom = state
+                .custom_font_name
+                .as_ref()
+                .zip(state.custom_font_bytes.as_ref())
+                .map(|(n, b)| (n.as_str(), b.as_slice()));
+            crate::app::theme::rebuild_fonts(
+                &cc.egui_ctx,
+                crate::app::theme::FontSetup { custom, arabic: true },
+            );
+        }
         Self { state }
     }
 

@@ -223,13 +223,106 @@ pub fn apply_theme(
 
 /// Install a user-supplied font file as an additional family.
 pub fn install_custom_font(ctx: &egui::Context, name: &str, bytes: &[u8]) {
-    let mut fonts = egui::FontDefinitions::default();
-    fonts.font_data.insert(
-        name.to_owned(),
-        egui::FontData::from_owned(bytes.to_vec()).into(),
+    rebuild_fonts(
+        ctx,
+        FontSetup {
+            custom: Some((name, bytes)),
+            arabic: false,
+        },
     );
-    if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
-        proportional.insert(0, name.to_owned());
+}
+
+/// Which extra fonts to layer on top of egui's bundled fonts.
+pub struct FontSetup<'a> {
+    pub custom: Option<(&'a str, &'a [u8])>,
+    /// Load a system font with Arabic coverage (fixes tofu boxes).
+    pub arabic: bool,
+}
+
+/// Rebuild font definitions: stock + optional custom + optional Arabic.
+/// Returns true when Arabic was requested and a suitable font was found.
+pub fn rebuild_fonts(ctx: &egui::Context, setup: FontSetup) -> bool {
+    let mut fonts = egui::FontDefinitions::default();
+    if let Some((name, bytes)) = setup.custom {
+        fonts.font_data.insert(
+            name.to_owned(),
+            egui::FontData::from_owned(bytes.to_vec()).into(),
+        );
+        if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+            proportional.insert(0, name.to_owned());
+        }
+    }
+    let mut arabic_ok = !setup.arabic;
+    if setup.arabic {
+        if let Some((name, bytes)) = load_system_arabic_font() {
+            fonts.font_data.insert(
+                name.clone(),
+                egui::FontData::from_owned(bytes).into(),
+            );
+            if let Some(proportional) = fonts.families.get_mut(&egui::FontFamily::Proportional) {
+                // Highest priority so Arabic codepoints resolve here first.
+                proportional.insert(0, name);
+            }
+            arabic_ok = true;
+        } else {
+            arabic_ok = false;
+        }
     }
     ctx.set_fonts(fonts);
+    arabic_ok
+}
+
+/// Find a system font with Arabic glyphs. Returns (family name, bytes).
+fn load_system_arabic_font() -> Option<(String, Vec<u8>)> {
+    let mut dirs: Vec<String> = Vec::new();
+    for key in ["SystemRoot", "WINDIR"] {
+        if let Ok(w) = std::env::var(key) {
+            dirs.push(format!("{w}\\Fonts"));
+        }
+    }
+    // Unix fallbacks.
+    dirs.push("/usr/share/fonts/truetype/noto".to_string());
+    dirs.push("/usr/share/fonts".to_string());
+    let candidates = [
+        "segoeui.ttf",                 // Windows native, has Arabic
+        "arial.ttf",                   // universal fallback, has Arabic
+        "tahoma.ttf",                  // excellent Arabic coverage
+        "NotoSansArabic-Regular.ttf",
+        "NotoNaskhArabic-Regular.ttf",
+        "Amiri-Regular.ttf",
+    ];
+    for dir in &dirs {
+        for file in &candidates {
+            let path = format!("{dir}\\{file}");
+            if let Ok(bytes) = std::fs::read(&path) {
+                if looks_like_arabic_font(file, &bytes) {
+                    return Some((format!("arabic-{file}"), bytes));
+                }
+            }
+            let path = format!("{dir}/{file}");
+            if let Ok(bytes) = std::fs::read(&path) {
+                if looks_like_arabic_font(file, &bytes) {
+                    return Some((format!("arabic-{file}"), bytes));
+                }
+            }
+        }
+    }
+    None
+}
+
+/// Guard against picking a file that exists but lacks Arabic coverage.
+fn looks_like_arabic_font(name: &str, bytes: &[u8]) -> bool {
+    let lower = name.to_lowercase();
+    if lower.contains("arab")
+        || lower.contains("amiri")
+        || lower.contains("naskh")
+        || lower.contains("nask")
+    {
+        return true;
+    }
+    // Known-good Windows fonts. Segoe UI / Arial / Tahoma all ship Arabic.
+    if ["segoeui.ttf", "arial.ttf", "tahoma.ttf"].contains(&lower.as_str()) {
+        return bytes.len() > 100_000;
+    }
+    false
 }

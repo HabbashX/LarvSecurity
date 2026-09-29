@@ -1,7 +1,7 @@
 use eframe::egui;
 
 use crate::app::state::AppState;
-use crate::app::theme::{apply_theme, install_custom_font, AccentChoice, ThemeMode};
+use crate::app::theme::{apply_theme, rebuild_fonts, AccentChoice, FontSetup, ThemeMode};
 use crate::ui::components::{card, header, info_box, primary_button};
 use crate::utils::i18n::Language;
 
@@ -82,7 +82,7 @@ pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
                         }
                     }
                 });
-                ui.weak("Arabic covers sidebar, top bar, palette, and common actions. Tool bodies stay English for now.");
+                ui.weak("Arabic covers sidebar, top bar, palette, and common actions. Tool bodies stay English for now. Arabic loads a system font automatically; letter-joining is basic (no shaping engine).");
             });
 
             ui.add_space(8.0);
@@ -208,11 +208,17 @@ pub fn show(ctx: &egui::Context, ui: &mut egui::Ui, state: &mut AppState) {
         state.lang,
     );
     if before != after {
-        if state.custom_font_bytes.is_some() && state.custom_font_name.is_some() {
+        let need_arabic = state.lang == Language::Arabic;
+        let arabic_ok = if state.custom_font_bytes.is_some() && state.custom_font_name.is_some() {
             // Reinstall custom font on top of defaults, then restyle.
             let name = state.custom_font_name.clone().unwrap();
             let bytes = state.custom_font_bytes.clone().unwrap();
-            install_custom_font(ctx, &name, &bytes);
+            rebuild_fonts(ctx, FontSetup { custom: Some((&name, &bytes)), arabic: need_arabic })
+        } else {
+            rebuild_fonts(ctx, FontSetup { custom: None, arabic: need_arabic })
+        };
+        if need_arabic && !arabic_ok {
+            state.set_status(false, "No Arabic system font found — install one and retry.");
         }
         ctx.set_pixels_per_point(state.ui_scale);
         apply_theme(
